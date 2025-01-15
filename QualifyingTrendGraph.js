@@ -143,7 +143,7 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
 });
 
 
-    // Series creation
+    // Modified functions in QualifyingTrendGraph.js
     function createSeries(data, trends, isTrendOnly) {
         if (isTrendOnly) {
             return [
@@ -174,68 +174,74 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
             ...(state.showTrendInMain ? trends : [])
         ];
     }
-
-    // Trend calculation function with improved segment handling
-    // Trend calculation function with improved segment handling
+    
     function calculateTrends(data) {
-        if (data.length < 2) return [];
+    if (data.length < 2) return [];
+
+    // Sort data by round number (x-value)
+    data.sort((a, b) => a[0] - b[0]);
     
-        // Calculate points per segment
-        const totalPoints = data.length;
-        const pointsPerSegment = Math.ceil(totalPoints / state.currentSegments);
+    // Calculate points per segment
+    const totalPoints = data.length;
+    const pointsPerSegment = Math.ceil(totalPoints / state.currentSegments);
+    
+    const colors = ['#3cb371', '#1e90ff', '#ff6b6b', '#ffd700'];
+    const segments = [];
+
+    for (let i = 0; i < state.currentSegments; i++) {
+        const start = i * pointsPerSegment;
+        const end = Math.min(start + pointsPerSegment, totalPoints);
         
-        const colors = ['#3cb371', '#1e90ff', '#ff6b6b', '#ffd700'];
-        const segments = [];
-    
-        for (let i = 0; i < state.currentSegments; i++) {
-            const start = i * pointsPerSegment;
-            const end = Math.min(start + pointsPerSegment, totalPoints);
+        // Include one point before and after the segment (if they exist)
+        const segmentStart = Math.max(0, start - (i > 0 ? 1 : 0));
+        const segmentEnd = Math.min(totalPoints, end + (i < state.currentSegments - 1 ? 1 : 0));
+        const segmentData = data.slice(segmentStart, segmentEnd);
+        
+        if (segmentData.length > 1) {
+            // Calculate linear regression using actual round numbers
+            const xValues = segmentData.map(d => d[0]); // Round numbers
+            const yValues = segmentData.map(d => d[1]); // Delta percentages
+            const xMean = xValues.reduce((a, b) => a + b, 0) / xValues.length;
+            const yMean = yValues.reduce((a, b) => a + b, 0) / yValues.length;
             
-            // Include one point before and after the segment (if they exist)
-            const segmentStart = Math.max(0, start - (i > 0 ? 1 : 0));
-            const segmentEnd = Math.min(totalPoints, end + (i < state.currentSegments - 1 ? 1 : 0));
-            const segmentData = data.slice(segmentStart, segmentEnd);
+            let numerator = 0;
+            let denominator = 0;
+            for (let j = 0; j < xValues.length; j++) {
+                numerator += (xValues[j] - xMean) * (yValues[j] - yMean);
+                denominator += Math.pow(xValues[j] - xMean, 2);
+            }
             
-            if (segmentData.length > 1) {
-                // Calculate linear regression
-                const xValues = segmentData.map(d => d[0]);
-                const yValues = segmentData.map(d => d[1]);
-                const xMean = xValues.reduce((a, b) => a + b, 0) / xValues.length;
-                const yMean = yValues.reduce((a, b) => a + b, 0) / yValues.length;
-                
-                let numerator = 0;
-                let denominator = 0;
-                for (let j = 0; j < xValues.length; j++) {
-                    numerator += (xValues[j] - xMean) * (yValues[j] - yMean);
-                    denominator += Math.pow(xValues[j] - xMean, 2);
-                }
-                
-                const slope = numerator / denominator;
-                const intercept = yMean - slope * xMean;
-                
-                // Generate trend line points only for the original segment (without the extra points)
-                const trendData = [];
-                const firstX = data[start][0];
-                const lastX = data[Math.min(end - 1, totalPoints - 1)][0];
-                
-                for (let x = firstX; x <= lastX; x++) {
+            const slope = numerator / denominator;
+            const intercept = yMean - slope * xMean;
+            
+            // Generate trend line points using actual round numbers
+            const trendData = [];
+            const firstX = xValues[0];
+            const lastX = xValues[xValues.length - 1];
+            
+            // Create points for each actual round in the segment
+            for (let x = firstX; x <= lastX; x++) {
+                // Only add points for rounds that exist in the data
+                if (xValues.includes(x)) {
                     const y = slope * x + intercept;
                     trendData.push([x, Number(y.toFixed(3))]);
                 }
-                
-                segments.push({
-                    name: `Trend ${state.currentSegments > 1 ? (i + 1) : ''}`,
-                    data: trendData,
-                    dashStyle: 'solid',
-                    color: colors[i % colors.length],
-                    lineWidth: 4,
-                    marker: { enabled: false }
-                });
             }
+            
+            segments.push({
+                name: `Trend ${state.currentSegments > 1 ? (i + 1) : ''}`,
+                data: trendData,
+                dashStyle: 'solid',
+                color: colors[i % colors.length],
+                lineWidth: 4,
+                marker: { enabled: false }
+            });
         }
-        
-        return segments;
     }
+    
+    return segments;
+}
+
 
 
     // UI Controls
@@ -410,11 +416,11 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
     }
 
     function prepareChartData() {
-        const filteredFullData = data.map((value, index) => {
-            if (state.activeThreshold && Math.abs(value) > state.activeThreshold) {
-                return [index + 1, null];
+        const filteredFullData = state.filteredData.map((point, index) => {
+            if (state.activeThreshold && Math.abs(point[1]) > state.activeThreshold) {
+                return [point[0], null];
             }
-            return [index + 1, value !== null ? Number(value.toFixed(3)) : null];
+            return [point[0], point[1] !== null ? Number(point[1].toFixed(3)) : null];
         });
         
         const validFilteredData = filteredFullData

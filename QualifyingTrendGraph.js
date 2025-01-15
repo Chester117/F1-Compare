@@ -57,7 +57,7 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
         return select;
     };
 
-    // Chart configuration
+    // Chart configuration function
     const getChartConfig = (chartData, trends, yMin, yMax, isTrendOnly = false) => ({
         chart: {
             type: 'line',
@@ -98,7 +98,7 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
             max: yMax,
             labels: { format: '{value:.1f}%', style: { fontSize: '12px' } },
             plotLines: [{
-                color: state.isZeroLineRed ? '#ff3333' : '#CCCCCC',
+                color: '#ff3333',  // Always start with red zero line
                 width: 1,
                 value: 0,
                 zIndex: 2
@@ -174,24 +174,28 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
         ];
     }
 
-    // Trend calculation
+    // Trend calculation function with improved segment handling
     function calculateTrends(data) {
         if (data.length < 2) return [];
     
-        // Calculate points per segment, ensuring we include all points
-        const pointsPerSegment = Math.ceil(data.length / state.currentSegments);
+        // Calculate points per segment
+        const totalPoints = data.length;
+        const pointsPerSegment = Math.ceil(totalPoints / state.currentSegments);
         
-        // Create segments with different colors for visibility
         const colors = ['#3cb371', '#1e90ff', '#ff6b6b', '#ffd700'];
         const segments = [];
     
         for (let i = 0; i < state.currentSegments; i++) {
             const start = i * pointsPerSegment;
-            const end = Math.min(start + pointsPerSegment, data.length);
-            const segmentData = data.slice(start, end);
+            const end = Math.min(start + pointsPerSegment, totalPoints);
+            
+            // Include one point before and after the segment (if they exist)
+            const segmentStart = Math.max(0, start - (i > 0 ? 1 : 0));
+            const segmentEnd = Math.min(totalPoints, end + (i < state.currentSegments - 1 ? 1 : 0));
+            const segmentData = data.slice(segmentStart, segmentEnd);
             
             if (segmentData.length > 1) {
-                // Calculate linear regression for this segment
+                // Calculate linear regression
                 const xValues = segmentData.map(d => d[0]);
                 const yValues = segmentData.map(d => d[1]);
                 const xMean = xValues.reduce((a, b) => a + b, 0) / xValues.length;
@@ -207,10 +211,10 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
                 const slope = numerator / denominator;
                 const intercept = yMean - slope * xMean;
                 
-                // Generate trend line points only for this segment
+                // Generate trend line points only for the original segment (without the extra points)
                 const trendData = [];
-                const firstX = xValues[0];
-                const lastX = xValues[xValues.length - 1];
+                const firstX = data[start][0];
+                const lastX = data[Math.min(end - 1, totalPoints - 1)][0];
                 
                 for (let x = firstX; x <= lastX; x++) {
                     const y = slope * x + intercept;

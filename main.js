@@ -483,9 +483,9 @@ function createQualifyingTable(results) {
 
         // Define session colors
         const sessionColors = {
-            'Q1': '#ffcdd2', // light red
-            'Q2': '#fff9c4', // light yellow
-            'Q3': '#e1bee7'  // light purple
+            'Q1': '#ffcdd2',
+            'Q2': '#fff9c4',
+            'Q3': '#e1bee7'
         };
 
         cells.push(
@@ -509,8 +509,8 @@ function createQualifyingTable(results) {
 
             currentTable.timeDifferences.push(timeDifference);
             currentTable.percentageDifferences.push(percentageDifference);
-            currentTable.deltaPercentages.push(percentageDifference);
-            currentTable.sameRaceCount++;
+            // Store round number along with the delta percentage
+            currentTable.deltaPercentages.push([parseInt(races[i].round), percentageDifference]);
 
             if (timeDifference > 0) {
                 currentTable.driver1Better++;

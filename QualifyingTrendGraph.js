@@ -330,16 +330,18 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
             container.querySelector('.excluded-points')?.remove();
         } else {
             state.excludedPoints = [];
-            state.filteredData = data.map((value, index) => {
+            state.filteredData = data.map((point, index) => {
+                const [round, value] = point;
                 const absValue = Math.abs(value);
                 if (absValue > threshold) {
                     state.excludedPoints.push({ 
-                        raceNumber: index + 1, 
+                        round: round,  // Store actual round number
+                        raceName: races[index].raceName,  // Store race name
                         value: Number(value.toFixed(3)) 
                     });
-                    return null;
+                    return [round, null];
                 }
-                return value;
+                return point;
             });
             state.activeThreshold = threshold;
             
@@ -360,8 +362,11 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
             excludedDiv.style.cssText = 'padding: 10px; background-color: #f5f5f5; border-radius: 4px; margin-top: 10px; text-align: center;';
             container.appendChild(excludedDiv);
         }
-        excludedDiv.innerHTML = '<strong>Excluded Points:</strong><br>' +
-            state.excludedPoints.map(p => `Race ${p.raceNumber}: ${p.value}%`).join('<br>');
+        excludedDiv.innerHTML = '<strong>Filtered Out Data Points:</strong><br>' +
+            state.excludedPoints
+                .sort((a, b) => a.round - b.round)
+                .map(p => `Round ${p.round} (${p.raceName}): ${p.value > 0 ? '+' : ''}${p.value}%`)
+                .join('<br>');
     }
 
     function toggleZeroLine() {

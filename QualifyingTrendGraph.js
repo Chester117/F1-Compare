@@ -59,88 +59,89 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
 
     // Chart configuration function
     const getChartConfig = (chartData, trends, yMin, yMax, isTrendOnly = false) => ({
-        chart: {
-            type: 'line',
-            height: '400px',
-            events: {
-                load: function() {
-                    const containerId = `export-${Date.now()}`;
-                    const exportContainer = document.createElement('div');
-                    exportContainer.id = containerId;
-                    this.container.parentNode.appendChild(exportContainer);
-                    
-                    const exportButton = createButton('Download High-Res Image', () => {
-                        this.exportChart({
-                            type: 'image/png',
-                            filename: 'qualifying-comparison',
-                            scale: 4,
-                            width: 3000,
-                            sourceWidth: 3000,
-                            sourceHeight: 2000
-                        });
+    chart: {
+        type: 'line',
+        height: '400px',
+        events: {
+            load: function() {
+                const containerId = `export-${Date.now()}`;
+                const exportContainer = document.createElement('div');
+                exportContainer.id = containerId;
+                this.container.parentNode.appendChild(exportContainer);
+                
+                const exportButton = createButton('Download High-Res Image', () => {
+                    this.exportChart({
+                        type: 'image/png',
+                        filename: 'qualifying-comparison',
+                        scale: 3,
+                        width: 3600,
+                        sourceWidth: 3600,
+                        sourceHeight: 2400
                     });
-                    exportContainer.appendChild(exportButton);
+                });
+                exportContainer.appendChild(exportButton);
+            }
+        }
+    },
+    title: { 
+        text: isTrendOnly ? 'Trend Line' : 'Qualifying Gap Trend',
+        style: { fontSize: '18px', fontWeight: 'bold' }
+    },
+    xAxis: {
+        title: { text: 'Race Number', style: { fontSize: '14px' } },
+        allowDecimals: false,
+        labels: { style: { fontSize: '12px' } }
+    },
+    yAxis: {
+        title: { text: 'Delta %', style: { fontSize: '14px' } },
+        min: yMin,
+        max: yMax,
+        labels: { format: '{value:.1f}%', style: { fontSize: '12px' } },
+        plotLines: [{
+            color: '#ff3333',  // Always start with red zero line
+            width: 1,
+            value: 0,
+            zIndex: 2
+        }],
+        plotBands: [
+            {
+                from: 0,
+                to: yMax,
+                color: 'rgba(0, 0, 0, 0)',
+                label: {
+                    text: `${state.driver1LastName} is Faster`,
+                    align: 'left',
+                    x: 10,
+                    style: { color: '#666666', fontSize: '12px' }
+                }
+            },
+            {
+                from: yMin,
+                to: 0,
+                color: 'rgba(0, 0, 0, 0)',
+                label: {
+                    text: `${state.driver2LastName} is Faster`,
+                    align: 'left',
+                    x: 10,
+                    style: { color: '#666666', fontSize: '12px' }
                 }
             }
+        ]
+    },
+    tooltip: {
+        formatter: function() {
+            return `Race ${this.x}<br/>${this.series.name}: ${Number(this.y).toFixed(3)}%`;
         },
-        title: { 
-            text: isTrendOnly ? 'Trend Line' : 'Qualifying Gap Trend',
-            style: { fontSize: '18px', fontWeight: 'bold' }
-        },
-        xAxis: {
-            title: { text: 'Race Number', style: { fontSize: '14px' } },
-            allowDecimals: false,
-            labels: { style: { fontSize: '12px' } }
-        },
-        yAxis: {
-            title: { text: 'Delta %', style: { fontSize: '14px' } },
-            min: yMin,
-            max: yMax,
-            labels: { format: '{value:.1f}%', style: { fontSize: '12px' } },
-            plotLines: [{
-                color: '#ff3333',  // Always start with red zero line
-                width: 1,
-                value: 0,
-                zIndex: 2
-            }],
-            plotBands: [
-                {
-                    from: 0,
-                    to: yMax,
-                    color: 'rgba(0, 0, 0, 0)',
-                    label: {
-                        text: `${state.driver1LastName} is Faster`,
-                        align: 'left',
-                        x: 10,
-                        style: { color: '#666666', fontSize: '12px' }
-                    }
-                },
-                {
-                    from: yMin,
-                    to: 0,
-                    color: 'rgba(0, 0, 0, 0)',
-                    label: {
-                        text: `${state.driver2LastName} is Faster`,
-                        align: 'left',
-                        x: 10,
-                        style: { color: '#666666', fontSize: '12px' }
-                    }
-                }
-            ]
-        },
-        tooltip: {
-            formatter: function() {
-                return `Race ${this.x}<br/>${this.series.name}: ${Number(this.y).toFixed(3)}%`;
-            },
-            style: { fontSize: '12px' }
-        },
-        legend: {
-            enabled: state.currentSegments > 1 || !isTrendOnly,
-            itemStyle: { fontSize: '12px' }
-        },
-        series: createSeries(chartData, trends, isTrendOnly),
-        credits: { enabled: false }
-    });
+        style: { fontSize: '12px' }
+    },
+    legend: {
+        enabled: state.currentSegments > 1 || !isTrendOnly,
+        itemStyle: { fontSize: '12px' }
+    },
+    series: createSeries(chartData, trends, isTrendOnly),
+    credits: { enabled: false }
+});
+
 
     // Series creation
     function createSeries(data, trends, isTrendOnly) {
@@ -174,6 +175,7 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
         ];
     }
 
+    // Trend calculation function with improved segment handling
     // Trend calculation function with improved segment handling
     function calculateTrends(data) {
         if (data.length < 2) return [];
